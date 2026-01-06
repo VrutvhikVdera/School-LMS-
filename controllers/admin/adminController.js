@@ -1,13 +1,11 @@
-// const bcrypt = require('bcrypt');
 const bcrypt = require('bcryptjs');
 
 const User = require('../../models/user/userModel');
 const Standard = require('../../models/standard/standardModel');
 const Subject = require('../../models/subject/subjectModel');
+const Attendance = require('../../models/attendance/attendanceModel');
 
-/* =========================
-   SUBJECTS
-========================= */
+/*SUBJECTS */
 
 async function getSubjects(req, res) {
     try {
@@ -29,9 +27,54 @@ async function getSubjects(req, res) {
     }
 }
 
-/* =========================
-   TEACHER MANAGEMENT
-========================= */
+/*GET ALL STUDENTS*/
+
+async function getAllStudents(req, res) {
+    try {
+        const students = await User.find({
+            userRole: 'student',
+            isActive: true
+        })
+            .select('-hashedPassword')
+            .populate('standardRef', 'stdName')
+            .populate('mentorTeacher', 'fullName emailAddress');
+
+        return res.status(200).json({
+            message: 'Students fetched successfully',
+            data: students
+        });
+    } catch (err) {
+        return res.status(500).json({
+            message: 'Failed to fetch students',
+            error: err.message
+        });
+    }
+}
+
+/*GET ALL TEACHERS */
+
+async function getAllTeachers(req, res) {
+    try {
+        const teachers = await User.find({
+            userRole: 'teacher',
+            isActive: true
+        })
+            .select('-hashedPassword')
+            .populate('subjectAssignments', 'subjectName');
+
+        return res.status(200).json({
+            message: 'Teachers fetched successfully',
+            data: teachers
+        });
+    } catch (err) {
+        return res.status(500).json({
+            message: 'Failed to fetch teachers',
+            error: err.message
+        });
+    }
+}
+
+/*TEACHER MANAGEMENT */
 
 async function registerTeacher(req, res) {
     try {
@@ -43,7 +86,8 @@ async function registerTeacher(req, res) {
             ...req.body,
             hashedPassword,
             userRole: 'teacher',
-            subjectAssignments: subjectAssignments || []
+            subjectAssignments: subjectAssignments || [],
+            isActive: true
         });
 
         await teacher.save();
@@ -56,13 +100,11 @@ async function registerTeacher(req, res) {
         }
 
         return res.status(201).json({
-            status: 201,
             message: 'Teacher registered successfully',
             data: teacher
         });
     } catch (err) {
         return res.status(500).json({
-            status: 500,
             message: 'Teacher registration failed',
             error: err.message
         });
@@ -74,7 +116,7 @@ async function updateTeacher(req, res) {
         const { id } = req.params;
         const { subjectAssignments, ...updates } = req.body;
 
-        const teacher = await User.findById(id);
+        const teacher = await User.findOne({ _id: id, isActive: true });
         if (!teacher) {
             return res.status(404).json({ message: 'Teacher not found' });
         }
@@ -109,18 +151,26 @@ async function updateTeacher(req, res) {
     }
 }
 
+/*DELETE TEACHER*/
+
 async function removeTeacher(req, res) {
     try {
         const { id } = req.params;
 
-        const teacher = await User.findById(id);
-        if (!teacher || teacher.userRole !== 'teacher') {
+        const teacher = await User.findOne({
+            _id: id,
+            userRole: 'teacher',
+            isActive: true
+        });
+
+        if (!teacher) {
             return res.status(404).json({ message: 'Teacher not found' });
         }
 
         const linkedStudents = await User.countDocuments({
             mentorTeacher: id,
-            userRole: 'student'
+            userRole: 'student',
+            isActive: true
         });
 
         if (linkedStudents > 0) {
@@ -134,10 +184,11 @@ async function removeTeacher(req, res) {
             { $set: { mentorTeacher: null } }
         );
 
-        await User.findByIdAndDelete(id);
+        teacher.isActive = false;
+        await teacher.save();
 
         return res.status(200).json({
-            message: 'Teacher deleted successfully'
+            message: 'Teacher deactivated successfully (soft delete)'
         });
     } catch (err) {
         return res.status(500).json({
@@ -147,9 +198,7 @@ async function removeTeacher(req, res) {
     }
 }
 
-/* =========================
-   STANDARD MANAGEMENT
-========================= */
+/*STANDARD MANAGEMENT*/
 
 async function createStandard(req, res) {
     try {
@@ -163,6 +212,22 @@ async function createStandard(req, res) {
     } catch (err) {
         return res.status(500).json({
             message: 'Standard creation failed',
+            error: err.message
+        });
+    }
+}
+
+async function getAllStandards(req, res) {
+    try {
+        const standards = await Standard.find();
+
+        return res.status(200).json({
+            message: 'Standards fetched successfully',
+            data: standards
+        });
+    } catch (err) {
+        return res.status(500).json({
+            message: 'Failed to fetch standards',
             error: err.message
         });
     }
@@ -212,9 +277,7 @@ async function deleteStandard(req, res) {
     }
 }
 
-/* =========================
-   SUBJECT MANAGEMENT
-========================= */
+/*SUBJECT MANAGEMENT*/
 
 async function createSubject(req, res) {
     try {
@@ -228,6 +291,24 @@ async function createSubject(req, res) {
     } catch (err) {
         return res.status(500).json({
             message: 'Subject creation failed',
+            error: err.message
+        });
+    }
+}
+
+async function getAllSubjects(req, res) {
+    try {
+        const subjects = await Subject.find()
+            .populate('standardRef', 'stdName')
+            .populate('mentorTeacher', 'fullName');
+
+        return res.status(200).json({
+            message: 'Subjects fetched successfully',
+            data: subjects
+        });
+    } catch (err) {
+        return res.status(500).json({
+            message: 'Failed to fetch subjects',
             error: err.message
         });
     }
@@ -270,12 +351,48 @@ async function deleteSubject(req, res) {
     }
 }
 
-/* =========================
-   EXPORTS
-========================= */
+/*ADMIN VIEW ATTENDANCE*/
+
+async function getAttendanceReport(req, res) {
+    try {
+        const { studentId, standardId, from, to } = req.query;
+
+        const filter = { isActive: true };
+
+        if (studentId) filter.student = studentId;
+        if (standardId) filter.standardRef = standardId;
+
+        if (from && to) {
+            filter.date = {
+                $gte: new Date(from),
+                $lte: new Date(to)
+            };
+        }
+
+        const attendance = await Attendance.find(filter)
+            .sort({ date: -1 })
+            .populate('student', 'fullName emailAddress')
+            .populate('markedBy', 'fullName')
+            .populate('standardRef', 'stdName');
+
+        return res.status(200).json({
+            message: 'Attendance report fetched successfully',
+            data: attendance
+        });
+    } catch (err) {
+        return res.status(500).json({
+            message: 'Failed to fetch attendance report',
+            error: err.message
+        });
+    }
+}
 
 module.exports = {
     getSubjects,
+    getAllStudents,
+    getAllTeachers,
+    getAllStandards,
+    getAllSubjects,
     registerTeacher,
     updateTeacher,
     removeTeacher,
@@ -284,5 +401,6 @@ module.exports = {
     deleteStandard,
     createSubject,
     updateSubject,
-    deleteSubject
+    deleteSubject,
+    getAttendanceReport
 };

@@ -1,9 +1,8 @@
 const User = require('../../models/user/userModel');
 const Subject = require('../../models/subject/subjectModel');
+const Attendance = require('../../models/attendance/attendanceModel');
 
-/* =========================
-   TEACHER DASHBOARD
-========================= */
+/*TEACHER DASHBOARD */
 
 async function getTeacherProfile(req, res) {
     try {
@@ -32,9 +31,7 @@ async function getTeacherProfile(req, res) {
     }
 }
 
-/* =========================
-   STUDENTS UNDER TEACHER
-========================= */
+/*STUDENTS UNDER TEACHER */
 
 async function getMyStudents(req, res) {
     try {
@@ -42,7 +39,8 @@ async function getMyStudents(req, res) {
 
         const students = await User.find({
             mentorTeacher: teacherId,
-            userRole: 'student'
+            userRole: 'student',
+            isActive: true
         })
             .select('-hashedPassword')
             .populate('standardRef', 'stdName');
@@ -59,9 +57,7 @@ async function getMyStudents(req, res) {
     }
 }
 
-/* =========================
-   SUBJECTS HANDLED BY TEACHER
-========================= */
+/*SUBJECTS HANDLED BY TEACHER*/
 
 async function getMySubjects(req, res) {
     try {
@@ -83,9 +79,7 @@ async function getMySubjects(req, res) {
     }
 }
 
-/* =========================
-   UPDATE OWN PROFILE
-========================= */
+/*UPDATE OWN PROFILE */
 
 async function updateTeacherProfile(req, res) {
     try {
@@ -115,13 +109,69 @@ async function updateTeacherProfile(req, res) {
     }
 }
 
-/* =========================
-   EXPORTS
-========================= */
+/*MARK ATTENDANCE TEACHER */
+
+async function markAttendance(req, res) {
+    try {
+        const teacherId = req.user.userId;
+        const { date, standardRef, records } = req.body;
+
+        if (!date || !standardRef || !records?.length) {
+            return res.status(400).json({
+                message: 'Date, standard and attendance records are required'
+            });
+        }
+
+        // verify students to teacher
+        const studentIds = records.map(r => r.studentId);
+
+        const validStudents = await User.find({
+            _id: { $in: studentIds },
+            mentorTeacher: teacherId,
+            userRole: 'student',
+            isActive: true
+        });
+
+        if (validStudents.length !== studentIds.length) {
+            return res.status(403).json({
+                message: 'One or more students are invalid or not assigned to this teacher'
+            });
+        }
+
+        const attendanceDocs = records.map(r => ({
+            student: r.studentId,
+            standardRef,
+            date,
+            status: r.status,
+            markedBy: teacherId
+        }));
+
+        await Attendance.insertMany(attendanceDocs, { ordered: false });
+
+        return res.status(201).json({
+            message: 'Attendance marked successfully'
+        });
+    } catch (err) {
+        
+        if (err.code === 11000) {
+            return res.status(409).json({
+                message: 'Attendance already marked for one or more students'
+            });
+        }
+
+        return res.status(500).json({
+            message: 'Failed to mark attendance',
+            error: err.message
+        });
+    }
+}
+
+/*EXPORTS */
 
 module.exports = {
     getTeacherProfile,
     getMyStudents,
     getMySubjects,
-    updateTeacherProfile
+    updateTeacherProfile,
+    markAttendance
 };

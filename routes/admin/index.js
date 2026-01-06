@@ -1,154 +1,61 @@
-// const express = require('express');
-
-// const { registerUser, loginUser } = require('../../controllers/auth/authController');
-// const adminController = require('../../controllers/admin/adminController');
-// const studentController = require('../../controllers/student/studentController');
-
-// const authenticateRequest = require('../../middlewares/authmiddleware');
-// const authorizeRoles = require('../../middlewares/checkRoleMiddleware');
-
-// const adminRouter = express.Router();
-
-// // base route
-// adminRouter.get('/', (req, res) => {
-//     res.json({ message: 'Admin API is active' });
-// });
-
-// // auth
-// adminRouter.post('/register', registerUser);
-// adminRouter.post('/login', loginUser);
-
-// // subjects
-// adminRouter.get(
-//     '/subjects',
-//     authenticateRequest,
-//     authorizeRoles(['admin']),
-//     adminController.getSubjects
-// );
-
-// // teacher management
-// adminRouter.post(
-//     '/teachers',
-//     authenticateRequest,
-//     authorizeRoles(['admin']),
-//     adminController.registerTeacher
-// );
-
-// adminRouter.put(
-//     '/teachers/:id',
-//     authenticateRequest,
-//     authorizeRoles(['admin']),
-//     adminController.updateTeacher
-// );
-
-// adminRouter.delete(
-//     '/teachers/:id',
-//     authenticateRequest,
-//     authorizeRoles(['admin']),
-//     adminController.removeTeacher
-// );
-
-// // student management
-// adminRouter.post(
-//     '/students',
-//     authenticateRequest,
-//     authorizeRoles(['admin']),
-//     studentController.StudentRegister
-// );
-
-// adminRouter.put(
-//     '/students/:id',
-//     authenticateRequest,
-//     authorizeRoles(['admin']),
-//     studentController.editStudent
-// );
-
-// adminRouter.delete(
-//     '/students/:id',
-//     authenticateRequest,
-//     authorizeRoles(['admin']),
-//     studentController.deleteStudent
-// );
-
-// // standards
-// adminRouter.post(
-//     '/standards',
-//     authenticateRequest,
-//     authorizeRoles(['admin']),
-//     adminController.addStandard
-// );
-
-// adminRouter.put(
-//     '/standards/:id',
-//     authenticateRequest,
-//     authorizeRoles(['admin']),
-//     adminController.editStandard
-// );
-
-// adminRouter.delete(
-//     '/standards/:id',
-//     authenticateRequest,
-//     authorizeRoles(['admin']),
-//     adminController.deleteStandard
-// );
-
-// // subjects management
-// adminRouter.post(
-//     '/subjects',
-//     authenticateRequest,
-//     authorizeRoles(['admin']),
-//     adminController.addSubject
-// );
-
-// adminRouter.put(
-//     '/subjects/:id',
-//     authenticateRequest,
-//     authorizeRoles(['admin']),
-//     adminController.editSubject
-// );
-
-// adminRouter.delete(
-//     '/subjects/:id',
-//     authenticateRequest,
-//     authorizeRoles(['admin']),
-//     adminController.deleteSubject
-// );
-
-// module.exports = adminRouter;
-
-
-
-
-
 const express = require('express');
 
-const { registerUser, loginUser } = require('../../controllers/auth/authController');
 const adminController = require('../../controllers/admin/adminController');
 const studentController = require('../../controllers/student/studentController');
+const { registerUser, loginUser } = require('../../controllers/auth/authController');
 
-const authenticateRequest = require('../../middlewares/authmiddleware'); // ✅ FIX: filename
+const authenticateRequest = require('../../middlewares/authmiddleware');
 const authorizeRoles = require('../../middlewares/checkRoleMiddleware');
 
 const adminRouter = express.Router();
 
-// base route
+/*Base */
+
 adminRouter.get('/', (req, res) => {
     res.json({ message: 'Admin API is active' });
 });
 
-// auth
+/*Auth */
+
 adminRouter.post('/register', registerUser);
 adminRouter.post('/login', loginUser);
 
-// get subjects
+/*ADMIN LIST APIs*/
+
+// get all students
+adminRouter.get(
+    '/students',
+    authenticateRequest,
+    authorizeRoles(['admin']),
+    adminController.getAllStudents
+);
+
+// get all teachers
+adminRouter.get(
+    '/teachers',
+    authenticateRequest,
+    authorizeRoles(['admin']),
+    adminController.getAllTeachers
+);
+
+// get all standards
+adminRouter.get(
+    '/standards',
+    authenticateRequest,
+    authorizeRoles(['admin']),
+    adminController.getAllStandards
+);
+
+// get all subjects
 adminRouter.get(
     '/subjects',
     authenticateRequest,
     authorizeRoles(['admin']),
-    adminController.getSubjects
+    adminController.getAllSubjects
 );
 
-// teacher management
+/*TEACHER MANAGEMENT */
+
 adminRouter.post(
     '/teachers',
     authenticateRequest,
@@ -170,7 +77,8 @@ adminRouter.delete(
     adminController.removeTeacher
 );
 
-// student management  ✅ FIXED function names
+/*STUDENT MANAGEMENT */
+
 adminRouter.post(
     '/students',
     authenticateRequest,
@@ -192,7 +100,8 @@ adminRouter.delete(
     studentController.removeStudent
 );
 
-// standard management ✅ FIXED function names
+/*STANDARD MANAGEMENT*/
+
 adminRouter.post(
     '/standards',
     authenticateRequest,
@@ -214,7 +123,8 @@ adminRouter.delete(
     adminController.deleteStandard
 );
 
-// subject management ✅ FIXED function names
+/*SUBJECT MANAGEMENT */
+
 adminRouter.post(
     '/subjects',
     authenticateRequest,
@@ -234,6 +144,15 @@ adminRouter.delete(
     authenticateRequest,
     authorizeRoles(['admin']),
     adminController.deleteSubject
+);
+
+/*ADMIN VIEW ATTENDANCE */
+
+adminRouter.get(
+    '/attendance',
+    authenticateRequest,
+    authorizeRoles(['admin']),
+    adminController.getAttendanceReport
 );
 
 module.exports = adminRouter;

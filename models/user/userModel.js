@@ -37,6 +37,14 @@ const accountSchema = new mongoose.Schema(
       required: true
     },
 
+    /* DELETE */
+
+
+    isActive: {
+      type: Boolean,
+      default: true
+    },
+
     standard: {
       type: String
     },
@@ -114,10 +122,11 @@ const accountSchema = new mongoose.Schema(
   }
 );
 
-// auto update updatedAt on save
+// auto update and save
 accountSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
 
 module.exports = mongoose.model('User', accountSchema);
+

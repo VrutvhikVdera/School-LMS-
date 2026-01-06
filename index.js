@@ -1,34 +1,3 @@
-// const serverFramework = require('express');
-// const cookieReader = require('cookie-parser');
-// const formParser = require('body-parser');
-// const initializeDB = require('./config/database');
-// const apiEndpoints = require('./routes/api');
-
-// const app = serverFramework();
-// const PORT = 3000;
-
-// // database connect
-// initializeDB();
-
-// // middlewares
-// app.use(serverFramework.json());
-// app.use(formParser.urlencoded({ extended: true }));
-// app.use(cookieReader());
-
-// // routes
-// app.use('/api', apiEndpoints);
-
-// // server start
-// app.listen(PORT, (error) => {
-//     if (error) {
-//         console.log('Unable to start server');
-//         return;
-//     }
-//     console.log(`Server running at http://localhost:${PORT}`);
-// });
-
-
-
 const express = require('express');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
